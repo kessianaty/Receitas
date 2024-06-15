@@ -1,63 +1,119 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Alert, ScrollView, Image, FlatList, SafeAreaView } from 'react-native';
-import { getDownloadURL, ref, uploadBytesResumable } from "firebase/storage";
-import { sorvetinho, storage } from "../firebase";
-import { collection, addDoc, onSnapshot, deleteDoc, doc } from "firebase/firestore";
-import * as ImagePicker from 'expo-image-picker';
-import styles from './styles';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
+import { firestore } from "../firebase"; 
+import { collection, onSnapshot, deleteDoc, doc } from "firebase/firestore"; 
+import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 export default function Home({ navigation }) {
-
   const [sorvetes, setSorvetes] = useState([]);
 
+  // Função para deletar um documento do Firestore
   async function deleteSorvete(id) {
     try {
-      await deleteDoc(doc(sorvetinho, "sorvetes", id));
-      Alert.alert("O sorvete foi deletado.");
+      await deleteDoc(doc(firestore, "sorvetes", id)); // Aqui também
+      Alert.alert("O sorvete foi deletado com sucesso.");
     } catch (error) {
-      console.error("O sorvete não foi deletado, tente novamente | ", error);
+      console.error("Erro ao deletar sorvete:", error);
     }
   }
 
   useEffect(() => {
-    const unsubscribe = onSnapshot(collection(sorvetinho, 'sorvetes'), (querySnapshot) => {
-      const lista = [];
+    const unsubscribe = onSnapshot(collection(firestore, 'sorvetes'), (querySnapshot) => {
+      const data = [];
       querySnapshot.forEach((doc) => {
-        lista.push({ ...doc.data(), id: doc.id });
+        data.push({ ...doc.data(), id: doc.id });
       });
-      setSorvetes(lista);
+      setSorvetes(data);
     });
+
     return () => unsubscribe();
   }, []);
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Sorvetes</Text>
+    <View style={styles.container}>
+      <View>
+        <Text style={styles.titulo}>Lista de Sorvetes</Text>
+      </View>
+
       <FlatList
         data={sorvetes}
-        renderItem={({ item }) => (
-          <View style={styles.recipeContainer}>
-            <View style={styles.recipeDetails}>
-              <Text style={styles.recipeText}>sabor: {item.sabor}</Text>
-              <Text style={styles.recipeText}>Recheio: {item.recheio}</Text>
-              <Text style={styles.recipeText}>Recipiente: {item.recipiente}</Text>
-              <Text style={styles.recipeText}>Preparo: {item.preparo}</Text>
-              {item.image && item.image[1] && (
+        renderItem={({ item }) => {
+          return (
+            <View style={styles.sorvete}>
+
+              <TouchableOpacity onPress={() => navigation.navigate('Alterar', { id: item.id, sabor: item.sabor, preco: item.preco, data: item.data, cliente: item.cliente })}>
+                <View style={styles.itens}>
+                  <Text style={styles.tituloSorvete}> Sabor: <Text style={styles.textoSorvete}>{item.sabor}</Text></Text>
+                  <Text style={styles.tituloSorvete}> Preço: <Text style={styles.textoSorvete}>{item.preco}</Text></Text>
+                  <Text style={styles.tituloSorvete}> Data: <Text style={styles.textoSorvete}>{item.data}</Text></Text>
+                  <Text style={styles.tituloSorvete}> cliente: <Text style={styles.textoSorvete}>{item.cliente}</Text></Text>
+                  {item.image && item.image[1] && (
                 <Image source={{ uri: item.image[1] }} style={styles.recipeImage} />
               )}
-            </View>
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity onPress={() => deleteSorvete(item.id)} style={styles.button}>
-                <Text style={styles.buttonText}>Deletar Sorvete</Text>
+                </View>
               </TouchableOpacity>
+
+              <View style={styles.botaoDeletar}>
+                <TouchableOpacity onPress={() => deleteSorvete(item.id)}>
+                  <MaterialCommunityIcons name="delete-empty" size={30} color="#FE2E64" />
+                </TouchableOpacity>
+              </View>
+
             </View>
-          </View>
-        )}
-        keyExtractor={(item) => item.id}
+          );
+        }}
       />
-      <TouchableOpacity style={styles.addButton} onPress={() => navigation.navigate("Cadastrar")}>
-        <Text style={styles.buttonText}>Adicionar sorvete</Text>
+      
+      <TouchableOpacity style={styles.botaoAdicionar} onPress={() => navigation.navigate('Cadastrar')}>
+        <MaterialCommunityIcons name="plus-circle-outline" size={60} color="#B404AE" />
       </TouchableOpacity>
-    </SafeAreaView>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    backgroundColor: '#F5A9D0',
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  titulo: {
+    marginTop: 20,
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#DF01A5'
+  },
+  sorvete: {
+    backgroundColor: '#BF00FF',
+    top: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderBottomWidth: 20,
+    borderBottomColor: '#ccc',
+  },
+  itens: {
+    flex: 1,
+  },
+  tituloSorvete: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#fff'
+  },
+  textoSorvete: {
+    fontSize: 16,
+    color: '#fff'
+  },
+  botaoDeletar: {
+    marginLeft: 10,
+  },
+  botaoAdicionar: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    color: '#00BFFF'
+  },
+});
